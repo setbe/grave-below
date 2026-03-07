@@ -1,0 +1,6 @@
+[submodule "3rd_party/hi"]
+	path = 3rd_party/hi
+	url = git@github.com:setbe/hi.git
+[submodule "3rd_party/SimplexNoise"]
+	path = 3rd_party/SimplexNoise
+	url = git@github.com:setbe/SimplexNoise.git
