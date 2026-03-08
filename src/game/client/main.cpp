@@ -21,11 +21,28 @@ struct MainWindow : public hi::Window<MainWindow> {
     gl::Buffer vbo{ gl::BufferTarget::ArrayBuffer };
     gl::VertexArray vao{};
     gl::Shader fill_orange{};
+
+
+    static constexpr int dt_hist_cap = 256;
+
+    float dt_hist[dt_hist_cap]{};
+    int   dt_hist_index = 0;
+    int   dt_hist_count = 0;
+    float dt_hist_sum = 0.f;
     
+    bool wireframe_mode = false;
+
+    inline void ResetDtHistory() noexcept {
+        for (int i = 0; i < dt_hist_cap; ++i) dt_hist[i] = 0.f;
+        dt_hist_index = 0;
+        dt_hist_count = 0;
+        dt_hist_sum = 0.f;
+    }
 
     MainWindow() noexcept {
         this->setTitle(ge::WINDOW_TITLE);
         this->setElementScale(2.f);
+        this->setTargetFps(0);
         gl::Viewport(0, 0, width(), height());
 
         // --- gl ---
@@ -49,15 +66,31 @@ struct MainWindow : public hi::Window<MainWindow> {
     void onKeyUp(hi::Key k) noexcept override {
         using K = hi::Key;
         switch (k) {
-        case K::_1: setCursor(isCursorVisible() ? hi::Cursor::Hidden : hi::Cursor::Arrow);  break;
-        case K::_2: setFullscreen(!isFullscreen()); break;
+        case K::_1: setCursorVisible(!isCursorVisible());
+            break;
+        case K::_2: setFullscreen(!isFullscreen());
+            break;
+        
+        case K::_3: {
+            // be careful on OpenGL ES (Android),
+            // because OpenGL Core has `gl::PolygonMode` function only
+            wireframe_mode = !wireframe_mode;
+            gl::PolygonMode(gl::Face::FrontAndBack,
+                wireframe_mode ? gl::Polygon::Line : gl::Polygon::Fill);
+            break;
         }
+        case K::_4:
+            setVSyncEnable(!isVSync());
+            ResetDtHistory();
+            break;
+        } // switch
     }
 
     void onMouseMove(int x, int y) noexcept override {
     }
 
-    void onRender() noexcept override {
+
+    void onRender(float dt) noexcept override {
         gl::ClearColor(0.33f, 0.33f, 0.33f, 0.f);
         gl::Clear(gl::buffer_bit.Color | gl::buffer_bit.Depth);
 
@@ -65,18 +98,48 @@ struct MainWindow : public hi::Window<MainWindow> {
         vao.bind();
         gl::DrawArrays(gl::PrimitiveMode::Triangles, 0, 3);
 
-        RenderGui();
+        RenderGui(dt);
     }
 
-    void RenderGui() noexcept {
+
+
+    void RenderGui(float dt) noexcept {
+        static constexpr float paragraph_spacing = ge::FONT_PIXEL_HEIGHT + 14.f;
+        
+        hi::TextDraw td{};
+        td.atlas = world_atlas;
+        td.dock = hi::TextDock::TopR;
+
+        const float avg_fps = PushDtSample(dt);
+
+        io::StackOut<512> text_ss{};
+        text_ss.reset();
+        text_ss << "FPS(avg): " << avg_fps << '\n'
+                << "VSync: " << isVSync();
+        td.text = text_ss.view();
+        this->DrawText(td);
+
         auto st = ButtonRegular("Click ME!!!!");
-        auto st2 = ButtonRegular("no you should click me instead", 0.f, ge::FONT_PIXEL_HEIGHT + 14.f);
+        auto st2 = ButtonRegular("no you should click me instead", 0.f, 1.f*paragraph_spacing);
         if (st.clicked) {
             setTitle(IO_U8("Clicked!"));
             last_click_ms = io::monotonic_ms();
         }
 
         FlushText();
+    }
+
+    inline float PushDtSample(float dt) noexcept {
+        dt_hist_sum -= dt_hist[dt_hist_index];
+        dt_hist[dt_hist_index] = dt;
+        dt_hist_sum += dt;
+
+        ++dt_hist_index;
+        if (dt_hist_index >= dt_hist_cap) dt_hist_index = 0;
+        if (dt_hist_count < dt_hist_cap) ++dt_hist_count;
+
+        const float avg_dt = (dt_hist_count > 0) ? (dt_hist_sum / (float)dt_hist_count) : 0.f;
+        return (avg_dt > 0.000001f) ? (1.f / avg_dt) : 0.f;
     }
 
     inline hi::ButtonState ButtonRegular(io::char_view text, hi::TextDock dock = hi::TextDock::TopL) noexcept {
@@ -129,7 +192,6 @@ int main() {
 
     while (win.PollEvents()) {
         win.Render();
-        win.SwapBuffers();
 
         if (win.last_click_ms < io::monotonic_ms() - 1500)
             win.setTitle(ge::WINDOW_TITLE);

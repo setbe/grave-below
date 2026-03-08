@@ -163,8 +163,8 @@ function(gb_apply_common target)
 
     target_compile_definitions(${target} PRIVATE
         $<$<CONFIG:Release>:NDEBUG>
-        # GB_HAS_STD when NOT freestanding
-        $<$<NOT:${_GE_FREESTANDING}>:GB_HAS_STD=1>
+        # IO_HAS_STD when NOT freestanding
+        $<$<NOT:${_GE_FREESTANDING}>:IO_HAS_STD=1>
     )
     # compiler-id common flags
     target_compile_options(${target} PRIVATE
@@ -205,6 +205,7 @@ function(gb_apply_freestanding target)
 
 
         # 3) Keep only what you explicitly link (Win32 API libs etc.)
+        # (add `psapi` for `SetProcessWorkingSetSize`, `K32EmptyWorkingSet`)
         target_link_libraries(${target} PRIVATE user32 gdi32 opengl32 kernel32 bcrypt ws2_32)
     endif()
 
