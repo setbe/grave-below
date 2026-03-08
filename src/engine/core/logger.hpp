@@ -21,7 +21,7 @@ namespace ge {
     static io::char_view log_what_str(LogWhat);
 
     static void log(io::char_view view) noexcept {
-        fs::File f{ LOG_FILENAME, io::OpenMode::Append };
+        fs::File f{ FILENAME_LOG, io::OpenMode::Append | io::OpenMode::Create };
         f.write_line(view);
     }
 

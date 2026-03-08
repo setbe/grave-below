@@ -6,15 +6,36 @@
 #include "../../engine/core/resource_manager.hpp"
 
 
-
+static constexpr float vertices[] = {
+    -0.5f, -0.5f, 0.0f,
+     0.5f, -0.5f, 0.0f,
+     0.0f,  0.5f, 0.0f
+};
 
 struct MainWindow : public hi::Window<MainWindow> {
-    hi::AtlasId world_atlas{ -1 };
+    // --- ui ---
     io::u64 last_click_ms = io::monotonic_ms();
+    // --- gl ---
+    hi::AtlasId world_atlas{ -1 };
+    
+    gl::Buffer vbo{ gl::BufferTarget::ArrayBuffer };
+    gl::VertexArray vao{};
+    gl::Shader fill_orange{};
+    
 
     MainWindow() noexcept {
         this->setTitle(ge::WINDOW_TITLE);
-        this->setElementScale(4.f);
+        this->setElementScale(2.f);
+        gl::Viewport(0, 0, width(), height());
+
+        // --- gl ---
+        vbo.bind();
+        vbo.data(vertices, sizeof(vertices), gl::BufferUsage::StaticDraw);
+
+        gl::Attr attrs[]{
+            gl::AttrOf<float>(3, false),
+        };
+        gl::MeshBinder::setup(vao, vbo, { attrs, sizeof(attrs) / sizeof(attrs[0]) });
     }
 
     void onError(hi::Error err, hi::AboutError ae) noexcept override {
@@ -28,8 +49,8 @@ struct MainWindow : public hi::Window<MainWindow> {
     void onKeyUp(hi::Key k) noexcept override {
         using K = hi::Key;
         switch (k) {
-        case K::_1: setCursorVisible(isCursorVisible());  break;
-        case K::_2: setFullscreen(isFullscreen()); break;
+        case K::_1: setCursor(isCursorVisible() ? hi::Cursor::Hidden : hi::Cursor::Arrow);  break;
+        case K::_2: setFullscreen(!isFullscreen()); break;
         }
     }
 
@@ -40,13 +61,22 @@ struct MainWindow : public hi::Window<MainWindow> {
         gl::ClearColor(0.33f, 0.33f, 0.33f, 0.f);
         gl::Clear(gl::buffer_bit.Color | gl::buffer_bit.Depth);
 
+        fill_orange.Use();
+        vao.bind();
+        gl::DrawArrays(gl::PrimitiveMode::Triangles, 0, 3);
+
+        RenderGui();
+    }
+
+    void RenderGui() noexcept {
         auto st = ButtonRegular("Click ME!!!!");
+        auto st2 = ButtonRegular("no you should click me instead", 0.f, ge::FONT_PIXEL_HEIGHT + 14.f);
         if (st.clicked) {
             setTitle(IO_U8("Clicked!"));
             last_click_ms = io::monotonic_ms();
         }
 
-        this->FlushText();
+        FlushText();
     }
 
     inline hi::ButtonState ButtonRegular(io::char_view text, hi::TextDock dock = hi::TextDock::TopL) noexcept {
@@ -66,19 +96,23 @@ struct MainWindow : public hi::Window<MainWindow> {
     }
 
     bool LoadResources() noexcept {
-        return LoadFonts();
+        return LoadFonts() && LoadShaders();
+    }
+
+    bool LoadShaders() noexcept {
+        return ge::ResourceManager::shader_from("fill_orange.frag", "fill_orange.vert", fill_orange);
     }
 
     bool LoadFonts() noexcept {
         hi::FontAtlasDesc desc{};
         desc.mode = hi::FontAtlasMode::SDF;
-        desc.pixel_height = 24;
+        desc.pixel_height = static_cast<io::u16>(ge::FONT_PIXEL_HEIGHT);
         desc.spread_px = 2.f;
 
         hi::FontId font_id{ -1 };
         {
             io::StackOut<220> ss{};
-            ss << ge::RESOURCE_PATH << ge::WORLD_FONT_PATH;
+            ss << ge::PATH_RESOURCES << ge::PATH_FONTS_TTF << ge::FILENAME_WORLD_FONT;
             font_id = this->LoadFont(ss.view());
         }
         if (font_id < 0) return false;
