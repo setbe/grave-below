@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../3rd_party/linmath/linmath/vec.hpp"
-#include "../3rd_party/linmath/linmath/mat.hpp"
+#include "../../../3rd_party/hi/3rd_party/linmath/linmath/vec.hpp"
+#include "../../../3rd_party/hi/3rd_party/linmath/linmath/mat.hpp"
 
 namespace ge {
 struct Camera {
@@ -25,6 +25,9 @@ struct Camera {
     inline lm::mat4 view_matrix() const noexcept {
         return lm::mat4_look_at(position, position + front, up);
     }
+    inline lm::mat4 projection_matrix(float aspect, float near_plane = 0.1f, float far_plane = 500.0f) const noexcept {
+        return lm::mat4_perspective(lm::radians(fov), aspect, near_plane, far_plane);
+    }
 
     inline void process_mouse_movement(float dx, float dy) noexcept {
         dx *= mouse_sensitivity;
@@ -32,6 +35,9 @@ struct Camera {
 
         yaw += dx;
         pitch += dy;
+
+        while (yaw > 180.0f)  yaw -= 360.0f;
+        while (yaw < -180.0f) yaw += 360.0f;
 
         if (pitch > 89.0f)  pitch = 89.0f;
         if (pitch < -89.0f) pitch = -89.0f;
@@ -84,4 +90,4 @@ private:
         up = lm::vec3_norm(lm::vec3_cross(right, front));
     }
 }; // struct Camera
-} // namespace hi
+} // namespace ge

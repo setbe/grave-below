@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.22)
+﻿cmake_minimum_required(VERSION 3.22)
 # ---------------------------------------------------------------------------
 # Custom configs for Visual Studio (must be BEFORE project())
 # NOTE: Don't use if(MSVC) here, MSVC is not known yet.
@@ -71,6 +71,7 @@ set(msvc_freestanding_base
     "/TP"
     "/W3"
     "/FC"
+    "/Gs9999999"
     "/GS-"
     "/GR-"
     "/Zl"
@@ -290,6 +291,35 @@ function(gb_add_console_exe name)
     gb_console(${name})
 endfunction()
 
+function(gb_add_hosted_console_exe name)
+    # usage:
+    # gb_add_hosted_console_exe(target
+    #     CPPS file1.cpp file2.cpp ...
+    #     HEADERS file1.hpp file2.hpp ...
+    #     LIBS lib1 lib2 ...
+    # )
+    set(options)
+    set(oneValueArgs)
+    set(multiValueArgs CPPS HEADERS LIBS)
+    cmake_parse_arguments(T "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    add_executable(${name} ${T_CPPS} ${T_HEADERS})
+    set_property(TARGET ${name} PROPERTY GB_HOSTED_LINK 1)
+    target_compile_definitions(${name} PRIVATE IO_HAS_STD=1)
+
+    if(T_LIBS)
+        target_link_libraries(${name} PRIVATE ${T_LIBS})
+    endif()
+
+    gb_apply_common(${name})
+    gb_apply_debug(${name})
+    gb_console(${name})
+
+    if(MSVC)
+        target_link_libraries(${name} PRIVATE user32 gdi32 opengl32 kernel32 bcrypt ws2_32)
+    endif()
+endfunction()
+
 function(gb_add_gui_exe name)
     # usage:
     # gb_add_gui_exe(target
@@ -341,16 +371,88 @@ endfunction()
 # -----------------------------------------------------------------------------
 
 set(GB_HEADERS_SERVER
-    "")
-
+    "src/game/server/server_app.hpp"
+    "src/game/server/server_bootstrap.hpp"
+    "src/game/server/app/server_app_members.hpp"
+    "src/game/server/app/server_app_inventory.hpp"
+    "src/game/server/app/server_app_world_sim_sand.hpp"
+    "src/game/server/app/server_app_fluid_and_gameplay.hpp"
+    "src/game/server/app/server_app_runtime_pipeline.hpp"
+    "src/game/server/app/server_app_tick_and_callbacks.hpp"
+    "src/game/server/chunk/server_stream_budget.hpp"
+    "src/game/server/chunk/server_stream_policy.hpp")
 set(GB_SOURCES_SERVER
     "src/game/server/main.cpp")
 
 set(GB_HEADERS_CLIENT
-    "src/engine/core/camera.hpp")
-
+    # core
+    "src/engine/core/camera.hpp"
+    "src/engine/core/key_bindings.hpp"
+    "src/engine/core/modeller.hpp"
+    # render
+    "src/game/client/render/client_defs.hpp"
+    "src/game/client/render/client_ui.hpp"
+    "src/game/client/render/window.hpp"
+    "src/game/client/render/window_world.hpp"
+    "src/game/client/render/ui_common.hpp"
+    "src/game/client/render/ui_contexts.hpp"
+    "src/game/client/render/ui_resources.hpp"
+    "src/game/client/render/scene.hpp"
+    "src/game/client/render/ui.hpp"
+    "src/game/shared/world/item.hpp"
+    # state
+    "src/game/client/state/state_session_actor.hpp"
+    "src/game/client/state/state_storage_queue.hpp"
+    "src/game/client/state/state_network.hpp"
+    # chunk/player/world/context modules
+    "src/game/client/chunk/request.hpp"
+    "src/game/client/chunk/frustum.hpp"
+    "src/game/client/chunk/mesh_job.hpp"
+    "src/game/client/player/block_build_destroy.hpp"
+    "src/game/client/player/camera.hpp"
+    "src/game/client/player/collider.hpp"
+    "src/game/client/world/world_common.hpp"
+    "src/game/client/world/world_chunk_cache.hpp"
+    "src/game/client/world/world_uv_far.hpp"
+    "src/game/client/world/world_runtime.hpp"
+    "src/game/client/world/world_entity_sky.hpp"
+    "src/game/client/context/main_menu.hpp"
+    "src/game/client/context/settings.hpp"
+    "src/game/client/context/graphics.hpp"
+    "src/game/client/context/key_bindings.hpp"
+    "src/game/client/context/multiplayer.hpp"
+    "src/game/client/context/connecting.hpp"
+    "src/game/client/context/in_game.hpp"
+    "src/game/client/context/in_game_dead.hpp")
 set(GB_SOURCES_CLIENT
     "src/game/client/main.cpp")
+
+set(GB_HEADERS_TEST_TEXTURE_ATLAS
+    "src/engine/core/config.hpp"
+    "src/engine/core/resource_manager.hpp")
+
+set(GB_SOURCES_TEST_TEXTURE_ATLAS
+    "src/game/client/tests/test_texture_atlas.cpp")
+
+set(GB_HEADERS_TEST_CHUNK_CLIENT
+    "src/game/shared/net/protocol.hpp"
+    "src/game/shared/world/chunk_stream.hpp")
+
+set(GB_SOURCES_TEST_CHUNK_CLIENT
+    "src/game/client/tests/test_chunk_client.cpp")
+
+set(GB_HEADERS_TEST_MODELLER
+    "src/engine/core/modeller.hpp"
+    "src/engine/core/resource_manager.hpp")
+
+set(GB_SOURCES_TEST_MODELLER
+    "src/game/client/tests/test_modeller.cpp")
+
+set(GB_HEADERS_TEST_SERVER_CHAOS_CLIENT
+    "src/game/shared/net/protocol.hpp")
+
+set(GB_SOURCES_TEST_SERVER_CHAOS_CLIENT
+    "src/game/server/tests/test_server_chaos_client.cpp")
 
 # -----------------------------------------------------------------------------
 # Freestanding GUI Applications.
@@ -364,11 +466,77 @@ gb_add_console_exe(server
     LIBS
 )
 
+if(MSVC)
+    # ReleaseMini freestanding x86 disables stack probes; server hot paths
+    # (net/event loop + world/chunk simulation) can use large frames.
+    # Commit a larger stack upfront to avoid guard-page jump AVs (C0000005).
+    target_link_options(server PRIVATE
+        $<$<CONFIG:ReleaseMini>:/STACK:4194304,4194304>
+        $<$<CONFIG:ReleaseNoConsole>:/STACK:4194304,4194304>
+        $<$<CONFIG:ReleaseMiniNoConsole>:/STACK:4194304,4194304>
+    )
+endif()
+
 # client
 gb_add_gui_exe(client
     CPPS ${GB_SOURCES_CLIENT}
     HEADERS ${GB_HEADERS_CLIENT}
     LIBS
+)
+
+if(MSVC)
+    target_link_options(client PRIVATE
+        $<$<CONFIG:ReleaseMini>:/STACK:4194304>
+        $<$<CONFIG:ReleaseMiniNoConsole>:/STACK:4194304>
+    )
+endif()
+
+
+# texture atlas validation (PASS1/PASS2)
+gb_add_hosted_console_exe(test_texture_atlas
+    CPPS ${GB_SOURCES_TEST_TEXTURE_ATLAS}
+    HEADERS ${GB_HEADERS_TEST_TEXTURE_ATLAS}
+    LIBS
+)
+set_target_properties(test_texture_atlas PROPERTIES
+    EXCLUDE_FROM_ALL TRUE
+    EXCLUDE_FROM_DEFAULT_BUILD_ReleaseMini TRUE
+    EXCLUDE_FROM_DEFAULT_BUILD_ReleaseNoConsole TRUE
+    EXCLUDE_FROM_DEFAULT_BUILD_ReleaseMiniNoConsole TRUE
+)
+
+# client net chunk streaming validation (reliable request + part reassembly)
+gb_add_console_exe(test_chunk_client
+    CPPS ${GB_SOURCES_TEST_CHUNK_CLIENT}
+    HEADERS ${GB_HEADERS_TEST_CHUNK_CLIENT}
+    LIBS
+)
+
+gb_add_console_exe(test_modeller
+    CPPS ${GB_SOURCES_TEST_MODELLER}
+    HEADERS ${GB_HEADERS_TEST_MODELLER}
+    LIBS
+)
+
+gb_add_hosted_console_exe(test_server_chaos_client
+    CPPS ${GB_SOURCES_TEST_SERVER_CHAOS_CLIENT}
+    HEADERS ${GB_HEADERS_TEST_SERVER_CHAOS_CLIENT}
+    LIBS
+)
+target_compile_definitions(test_server_chaos_client PRIVATE
+    $<$<OR:$<CONFIG:Release>,$<CONFIG:ReleaseMini>,$<CONFIG:ReleaseNoConsole>,$<CONFIG:ReleaseMiniNoConsole>>:NDEBUG;_ITERATOR_DEBUG_LEVEL=0>
+)
+if(MSVC)
+    # Hosted stress tool must always use CRT in every config (including ReleaseMini).
+    set_property(TARGET test_server_chaos_client PROPERTY MSVC_RUNTIME_LIBRARY
+        "$<IF:$<CONFIG:Debug>,MultiThreadedDebugDLL,MultiThreadedDLL>")
+    target_link_libraries(test_server_chaos_client PRIVATE ucrt vcruntime msvcrt)
+endif()
+set_target_properties(test_server_chaos_client PROPERTIES
+    EXCLUDE_FROM_ALL TRUE
+    EXCLUDE_FROM_DEFAULT_BUILD_ReleaseMini TRUE
+    EXCLUDE_FROM_DEFAULT_BUILD_ReleaseNoConsole TRUE
+    EXCLUDE_FROM_DEFAULT_BUILD_ReleaseMiniNoConsole TRUE
 )
 
 message(STATUS "Configured ${PROJECT_NAME} (C++${CMAKE_CXX_STANDARD})")

@@ -1,0 +1,127 @@
+# Grave Below block build profile
+# Format:
+#   block.<name>.<property> = <value>
+# Properties:
+#   hardness = light | medium | hard
+#   transparent = true | false
+#   texture.side / texture.top / texture.bottom
+
+block.air.hardness = hard
+block.air.transparent = true
+block.air.texture.side = air
+block.air.texture.top = air
+block.air.texture.bottom = air
+
+block.grass.hardness = light
+block.grass.transparent = false
+block.grass.texture.side = grass_side
+block.grass.texture.top = grass_up
+block.grass.texture.bottom = dirt
+
+block.dirt.hardness = light
+block.dirt.transparent = false
+block.dirt.texture.side = dirt
+block.dirt.texture.top = dirt
+block.dirt.texture.bottom = dirt
+
+block.stone.hardness = hard
+block.stone.transparent = false
+block.stone.texture.side = stone
+block.stone.texture.top = stone
+block.stone.texture.bottom = stone
+
+block.sand.hardness = light
+block.sand.transparent = false
+block.sand.texture.side = sand
+block.sand.texture.top = sand
+block.sand.texture.bottom = sand
+
+block.water.hardness = medium
+block.water.transparent = true
+block.water.texture.side = water
+block.water.texture.top = water
+block.water.texture.bottom = water
+
+block.blood.hardness = medium
+block.blood.transparent = true
+block.blood.texture.side = blood
+block.blood.texture.top = blood
+block.blood.texture.bottom = blood
+
+block.slime.hardness = medium
+block.slime.transparent = true
+block.slime.texture.side = slime
+block.slime.texture.top = slime
+block.slime.texture.bottom = slime
+
+block.snow.hardness = medium
+block.snow.transparent = false
+block.snow.texture.side = snow
+block.snow.texture.top = snow
+block.snow.texture.bottom = snow
+
+block.grass_pale.hardness = light
+block.grass_pale.transparent = false
+block.grass_pale.texture.side = grass_side
+block.grass_pale.texture.top = grass_up
+block.grass_pale.texture.bottom = dirt
+
+block.dirt_dry.hardness = light
+block.dirt_dry.transparent = false
+block.dirt_dry.texture.side = dirt
+block.dirt_dry.texture.top = dirt
+block.dirt_dry.texture.bottom = dirt
+
+block.hardened_stone.hardness = hard
+block.hardened_stone.transparent = false
+block.hardened_stone.texture.side = hardened_stone
+block.hardened_stone.texture.top = hardened_stone
+block.hardened_stone.texture.bottom = hardened_stone
+
+block.sand_ash.hardness = medium
+block.sand_ash.transparent = false
+block.sand_ash.texture.side = sand
+block.sand_ash.texture.top = sand
+block.sand_ash.texture.bottom = sand
+
+block.water_dark.hardness = medium
+block.water_dark.transparent = true
+block.water_dark.texture.side = water
+block.water_dark.texture.top = water
+block.water_dark.texture.bottom = water
+
+block.blood_dark.hardness = medium
+block.blood_dark.transparent = true
+block.blood_dark.texture.side = blood
+block.blood_dark.texture.top = blood
+block.blood_dark.texture.bottom = blood
+
+block.slime_dark.hardness = medium
+block.slime_dark.transparent = true
+block.slime_dark.texture.side = slime
+block.slime_dark.texture.top = slime
+block.slime_dark.texture.bottom = slime
+
+block.snow_dirty.hardness = medium
+block.snow_dirty.transparent = false
+block.snow_dirty.texture.side = snow
+block.snow_dirty.texture.top = snow
+block.snow_dirty.texture.bottom = snow
+
+block.book_anchor.hardness = hard
+block.book_anchor.transparent = true
+block.book_anchor.texture.side = book
+block.book_anchor.texture.top = book
+block.book_anchor.texture.bottom = book
+
+block.log.hardness = light
+block.log.transparent = false
+block.log.texture.side = log-side
+block.log.texture.top = log
+block.log.texture.bottom = log
+
+block.leaves.hardness = light
+block.leaves.transparent = true
+block.leaves.texture.side = leaves
+block.leaves.texture.top = leaves
+block.leaves.texture.bottom = leaves

@@ -1,0 +1,5 @@
+# Grave Engine server config
+job_threads = 0
+distance_chunks = 10
+hot_chunks = 1 # simulation radius (1 => 3x3x3)
+day-time-multiply = 20 # minutes
